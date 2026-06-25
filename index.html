@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사다리타기</title>
+<style>
+  :root{
+    --bg:#f4f3f0;
+    --card-bg:#ffffff;
+    --border:#e3e0d8;
+    --border-strong:#cfcbc0;
+    --text:#2c2c2a;
+    --text-secondary:#5f5e5a;
+    --text-tertiary:#888780;
+    --accent:#534AB7;
+    --accent-dark:#3c3489;
+    --danger:#A32D2D;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:48px 20px 64px;}
+  .card{background:var(--card-bg);border:1px solid var(--border);border-radius:16px;padding:32px;}
+  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  h1{font-size:22px;font-weight:600;margin:0 0 6px;}
+  p.subtitle{color:var(--text-secondary);margin:0;font-size:13.5px;line-height:1.6;}
+  .step{margin-top:26px;}
+  .step-title{font-size:15px;font-weight:600;margin:0 0 12px;}
+  .hint{font-size:12px;color:var(--text-secondary);font-weight:400;margin-left:4px;}
+  .input-row{display:flex;gap:8px;margin-bottom:12px;}
+  .input-row input{flex:1;padding:9px 12px;border:1px solid var(--border-strong);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--text);}
+  .input-row input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(83,74,183,0.15);}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;min-height:4px;margin-bottom:12px;}
+  .chip{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:6px 6px 6px 14px;font-size:13px;}
+  .chip button{border:none;background:none;cursor:pointer;color:var(--text-tertiary);font-size:15px;line-height:1;padding:2px 6px;}
+  .chip button:hover{color:var(--danger);}
+  .step-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:14px;}
+  .count-text{font-size:13px;color:var(--text-secondary);}
+  button{padding:9px 16px;border-radius:8px;border:1px solid var(--border-strong);background:#fff;font-size:14px;font-family:inherit;cursor:pointer;color:var(--text);}
+  button:hover{background:#f7f6f3;}
+  button:active{transform:scale(0.98);}
+  button:disabled{opacity:0.45;cursor:not-allowed;}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  button.primary:hover{background:var(--accent-dark);}
+  button.ghost{font-size:12.5px;padding:6px 10px;border-color:var(--border);color:var(--text-secondary);flex-shrink:0;}
+  .error-text{color:var(--danger);font-size:13px;margin-top:10px;line-height:1.6;}
+  .summary-line{font-size:13px;color:var(--text-secondary);margin-top:18px;padding:12px 14px;background:var(--bg);border-radius:8px;}
+  .summary-line b{color:var(--text);font-weight:600;}
+  .summary-line a{color:var(--accent);text-decoration:none;cursor:pointer;margin-left:6px;}
+  .summary-line a:hover{text-decoration:underline;}
+  #ladder-root{overflow-x:auto;padding:8px 0 4px;}
+  .play-row{display:flex;align-items:center;gap:16px;margin-top:6px;flex-wrap:wrap;}
+  .status-text{font-size:14px;color:var(--text-secondary);}
+  .hidden{display:none;}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}
+  @media (max-width:560px){ .play-row button{width:100%;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="top-row">
+      <div>
+        <h1>사다리타기</h1>
+        <p class="subtitle">참여자와 목표(점심값 등)를 원하는 만큼 입력하고, 한 사람씩 순서대로 결과를 확인합니다.</p>
+      </div>
+      <button id="reset-btn" type="button" class="ghost">처음부터 다시</button>
+    </div>
+
+    <div id="step1" class="step">
+      <h2 class="step-title">1. 참여자 입력</h2>
+      <div class="input-row">
+        <input type="text" id="participant-input" placeholder="이름을 입력하고 Enter 또는 추가">
+        <button id="add-participant-btn" type="button">추가</button>
+      </div>
+      <div class="chips" id="participant-chips"></div>
+      <div class="step-footer">
+        <span class="count-text" id="participant-count">0명 입력됨 (2명 이상 필요)</span>
+        <button id="done-participant-btn" class="primary" type="button" disabled>완료</button>
+      </div>
+    </div>
+
+    <div id="participant-summary" class="summary-line hidden"></div>
+
+    <div id="step2" class="step hidden">
+      <h2 class="step-title">2. 목표 입력 <span class="hint">예: 점심값 5000원 / 10000원 / 20000원 (또는 당첨처럼 1개만 입력 가능)</span></h2>
+      <div class="input-row">
+        <input type="text" id="goal-input" placeholder="목표를 입력하고 Enter 또는 추가">
+        <button id="add-goal-btn" type="button">추가</button>
+      </div>
+      <div class="chips" id="goal-chips"></div>
+      <div class="step-footer">
+        <span class="count-text" id="goal-count">0개 입력됨</span>
+        <button id="done-goal-btn" class="primary" type="button" disabled>완료</button>
+      </div>
+      <div id="goal-error" class="error-text hidden"></div>
+    </div>
+
+    <div id="goal-summary" class="summary-line hidden"></div>
+
+    <div id="step3" class="step hidden">
+      <div id="ladder-root"></div>
+      <div class="play-row">
+        <button id="start-btn" class="primary" type="button">사다리 시작</button>
+        <span id="status-text" class="status-text"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var COLORS = ['#534AB7','#0F6E56','#993C1D','#993556','#185FA5','#3B6D11','#854F0B','#A32D2D','#26215C','#04342C'];
+
+  var participants = [];
+  var goals = [];
+  var finalGoals = [];
+  var singleGoalMode = false;
+
+  var coords, rungsGlobal, topGroups, bottomGroups, trailsGroup, svgEl;
+
+  function el(id){ return document.getElementById(id); }
+
+  function renderChips(containerId, arr, onRemove){
+    var c = el(containerId);
+    c.innerHTML = '';
+    arr.forEach(function(item, idx){
+      var chip = document.createElement('div');
+      chip.className = 'chip';
+      var span = document.createElement('span');
+      span.textContent = item;
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '\u00d7';
+      rm.setAttribute('aria-label', item + ' 삭제');
+      rm.addEventListener('click', function(){ onRemove(idx); });
+      chip.appendChild(span);
+      chip.appendChild(rm);
+      c.appendChild(chip);
+    });
+  }
+
+  function updateParticipantUI(){
+    renderChips('participant-chips', participants, function(idx){
+      participants.splice(idx,1);
+      updateParticipantUI();
+    });
+    el('participant-count').textContent = participants.length + '명 입력됨' + (participants.length < 2 ? ' (2명 이상 필요)' : '');
+    el('done-participant-btn').disabled = participants.length < 2;
+  }
+
+  function updateGoalUI(){
+    renderChips('goal-chips', goals, function(idx){
+      goals.splice(idx,1);
+      updateGoalUI();
+    });
+    el('goal-count').textContent = goals.length + '개 입력됨';
+    el('done-goal-btn').disabled = goals.length < 1;
+    el('goal-error').classList.add('hidden');
+  }
+
+  function addParticipant(){
+    var input = el('participant-input');
+    var val = input.value.trim();
+    if(!val) return;
+    participants.push(val);
+    input.value = '';
+    updateParticipantUI();
+    input.focus();
+  }
+
+  function addGoal(){
+    var input = el('goal-input');
+    var val = input.value.trim();
+    if(!val) return;
+    goals.push(val);
+    input.value = '';
+    updateGoalUI();
+    input.focus();
+  }
+
+  function shuffleArray(arr){
+    for(var i=arr.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var tmp = arr[i]; arr[i]=arr[j]; arr[j]=tmp;
+    }
+  }
+
+  function generateRungs(n, rows){
+    var rungs = [];
+    for(var r=0;r<rows;r++){
+      var row = new Array(n-1).fill(false);
+      var i=0;
+      while(i<n-1){
+        if(Math.random() < 0.45){ row[i]=true; i+=2; } else { i+=1; }
+      }
+      rungs.push(row);
+    }
+    return rungs;
+  }
+
+  function buildPath(start){
+    var xs=coords.xs, topY=coords.topY, yLevels=coords.yLevels, bottomY=coords.bottomY;
+    var pos=start;
+    var pts=[{x:xs[start], y:topY}];
+    for(var r=0;r<rungsGlobal.length;r++){
+      var y=yLevels[r];
+      pts.push({x:xs[pos], y:y});
+      var row=rungsGlobal[r];
+      if(pos>0 && row[pos-1]){ pos--; pts.push({x:xs[pos], y:y}); }
+      else if(pos<participants.length-1 && row[pos]){ pos++; pts.push({x:xs[pos], y:y}); }
+    }
+    pts.push({x:xs[pos], y:bottomY});
+    return {pts:pts, end:pos};
+  }
+
+  function createMarker(pt, color){
+    var m = document.createElementNS(SVGNS,'circle');
+    m.setAttribute('r','6');
+    m.setAttribute('fill', color);
+    m.setAttribute('cx', pt.x);
+    m.setAttribute('cy', pt.y);
+    svgEl.appendChild(m);
+    return m;
+  }
+
+  function animatePath(pts, marker, color, onDone){
+    var segIndex = 0;
+    function startSeg(){
+      if(segIndex >= pts.length - 1){ onDone(); return; }
+      var from = pts[segIndex];
+      var to = pts[segIndex+1];
+      var dist = Math.hypot(to.x-from.x, to.y-from.y);
+      var duration = Math.max(70, dist*2.4);
+      var line = document.createElementNS(SVGNS,'line');
+      line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
+      line.setAttribute('x2', from.x); line.setAttribute('y2', from.y);
+      line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width','3');
+      line.setAttribute('stroke-linecap','round');
+      line.setAttribute('opacity','0.85');
+      trailsGroup.appendChild(line);
+      var startTime = performance.now();
+      function step(now){
+        var t = Math.min(1, (now-startTime)/duration);
+        var cx = from.x + (to.x-from.x)*t;
+        var cy = from.y + (to.y-from.y)*t;
+        marker.setAttribute('cx', cx);
+        marker.setAttribute('cy', cy);
+        line.setAttribute('x2', cx);
+        line.setAttribute('y2', cy);
+        if(t < 1){ requestAnimationFrame(step); } else { segIndex++; startSeg(); }
+      }
+      requestAnimationFrame(step);
+    }
+    startSeg();
+  }
+
+  function buildLadder(){
+    var n = participants.length;
+    var rows = Math.min(16, Math.max(8, n*2));
+    rungsGlobal = generateRungs(n, rows);
+
+    var root = el('ladder-root');
+    root.innerHTML = '';
+    var pad = 40, colSpacing = 64;
+    var width = Math.max(560, pad*2 + (n-1)*colSpacing);
+    var xs = n>1 ? Array.from({length:n}, function(_,i){ return pad + i*((width-2*pad)/(n-1)); }) : [width/2];
+    var topY = 46, levelGap = 20;
+    var yLevels = Array.from({length:rows}, function(_,r){ return topY + 24 + (r+1)*levelGap; });
+    var bottomY = topY + 24 + (rows+1)*levelGap;
+    var height = bottomY + 40;
+    coords = {xs:xs, topY:topY, yLevels:yLevels, bottomY:bottomY};
+
+    var svg = document.createElementNS(SVGNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','사다리타기 그림');
+    svg.style.display = 'block';
+    svg.style.maxWidth = '100%';
+
+    for(var i=0;i<n;i++){
+      var line = document.createElementNS(SVGNS,'line');
+      line.setAttribute('x1', xs[i]); line.setAttribute('x2', xs[i]);
+      line.setAttribute('y1', topY+18); line.setAttribute('y2', bottomY-18);
+      line.setAttribute('stroke', '#e3e0d8');
+      line.setAttribute('stroke-width','2');
+      svg.appendChild(line);
+    }
+
+    rungsGlobal.forEach(function(row, r){
+      var y = yLevels[r];
+      row.forEach(function(has, i){
+        if(has){
+          var rung = document.createElementNS(SVGNS,'line');
+          rung.setAttribute('x1', xs[i]); rung.setAttribute('x2', xs[i+1]);
+          rung.setAttribute('y1', y); rung.setAttribute('y2', y);
+          rung.setAttribute('stroke', '#cfcbc0');
+          rung.setAttribute('stroke-width','2');
+          svg.appendChild(rung);
+        }
+      });
+    });
+
+    var trails = document.createElementNS(SVGNS,'g');
+    svg.appendChild(trails);
+    trailsGroup = trails;
+
+    topGroups = [];
+    for(var a=0;a<n;a++){
+      var g = document.createElementNS(SVGNS,'g');
+      var circle = document.createElementNS(SVGNS,'circle');
+      circle.setAttribute('cx', xs[a]); circle.setAttribute('cy', topY); circle.setAttribute('r','15');
+      circle.setAttribute('fill', '#ffffff');
+      circle.setAttribute('stroke', '#cfcbc0');
+      circle.setAttribute('stroke-width','1.5');
+      var label = document.createElementNS(SVGNS,'text');
+      label.setAttribute('x', xs[a]); label.setAttribute('y', topY-22);
+      label.setAttribute('text-anchor','middle');
+      label.setAttribute('font-size','12');
+      label.setAttribute('fill', '#2c2c2a');
+      label.textContent = participants[a];
+      g.appendChild(circle); g.appendChild(label);
+      svg.appendChild(g);
+      topGroups.push({g:g, circle:circle, label:label});
+    }
+
+    bottomGroups = [];
+    for(var b=0;b<n;b++){
+      var g2 = document.createElementNS(SVGNS,'g');
+      var circle2 = document.createElementNS(SVGNS,'circle');
+      circle2.setAttribute('cx', xs[b]); circle2.setAttribute('cy', bottomY); circle2.setAttribute('r','15');
+      circle2.setAttribute('fill', '#ffffff');
+      circle2.setAttribute('stroke', '#cfcbc0');
+      circle2.setAttribute('stroke-width','1.5');
+      var label2 = document.createElementNS(SVGNS,'text');
+      label2.setAttribute('x', xs[b]); label2.setAttribute('y', bottomY+26);
+      label2.setAttribute('text-anchor','middle');
+      label2.setAttribute('font-size','12');
+      label2.setAttribute('fill', '#5f5e5a');
+      label2.textContent = finalGoals[b];
+      g2.appendChild(circle2); g2.appendChild(label2);
+      svg.appendChild(g2);
+      bottomGroups.push({g:g2, circle:circle2, label:label2});
+    }
+
+    root.appendChild(svg);
+    svgEl = svg;
+  }
+
+  function playStep(i){
+    var n = participants.length;
+    if(i >= n){ onAllDone(); return; }
+    el('status-text').textContent = (i+1) + ' / ' + n + ' 번째 참여자 확인 중: ' + participants[i];
+    var color = COLORS[i % COLORS.length];
+    var top = topGroups[i];
+    top.circle.setAttribute('stroke', color);
+    top.circle.setAttribute('stroke-width','3');
+
+    var built = buildPath(i);
+    var marker = createMarker(built.pts[0], color);
+
+    animatePath(built.pts, marker, color, function(){
+      marker.remove();
+      var bottom = bottomGroups[built.end];
+      bottom.circle.setAttribute('stroke', color);
+      bottom.circle.setAttribute('stroke-width','3');
+      bottom.label.setAttribute('fill', color);
+      bottom.label.style.fontWeight = '600';
+
+      var landed = finalGoals[built.end];
+      if(singleGoalMode && landed !== '꽝'){
+        onEarlyStop(i, landed);
+        return;
+      }
+      setTimeout(function(){ playStep(i+1); }, 450);
+    });
+  }
+
+  function onAllDone(){
+    el('status-text').textContent = '모든 참여자의 결과가 확인되었습니다. 사다리를 종료합니다.';
+  }
+
+  function onEarlyStop(i, goalText){
+    el('status-text').textContent = participants[i] + ' 님에서 \'' + goalText + '\' 목표가 나와 사다리를 종료합니다.';
+  }
+
+  function validateAndProceedGoals(){
+    var n = participants.length;
+    var g = goals.length;
+    var errEl = el('goal-error');
+
+    if(g === 0){
+      errEl.textContent = '목표를 1개 이상 입력해 주세요.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if(g !== 1 && g !== n){
+      errEl.textContent = '참여자 수(' + n + '명)와 목표 수(' + g + '개)가 다릅니다. 목표를 1개만 입력하면 나머지는 자동으로 \'꽝\'으로 채워지고, 그 외에는 참여자 수와 목표 수가 같아야 시작할 수 있습니다.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    errEl.classList.add('hidden');
+
+    singleGoalMode = (g === 1);
+    if(singleGoalMode){
+      finalGoals = new Array(n).fill('꽝');
+      var pos = Math.floor(Math.random()*n);
+      finalGoals[pos] = goals[0];
+    } else {
+      finalGoals = goals.slice();
+    }
+    shuffleArray(finalGoals);
+
+    el('step2').classList.add('hidden');
+    el('goal-summary').innerHTML = '목표 (<b>' + g + '</b>개): ' + goals.join(', ') + ' <a href="#" id="gs-edit">수정</a>';
+    el('goal-summary').classList.remove('hidden');
+    el('gs-edit').addEventListener('click', function(e){
+      e.preventDefault();
+      el('goal-summary').classList.add('hidden');
+      el('step3').classList.add('hidden');
+      el('step2').classList.remove('hidden');
+    });
+
+    buildLadder();
+    el('start-btn').disabled = false;
+    el('status-text').textContent = '';
+    el('step3').classList.remove('hidden');
+  }
+
+  el('add-participant-btn').addEventListener('click', addParticipant);
+  el('participant-input').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addParticipant(); }
+  });
+
+  el('done-participant-btn').addEventListener('click', function(){
+    el('step1').classList.add('hidden');
+    el('participant-summary').innerHTML = '참여자 (<b>' + participants.length + '</b>명): ' + participants.join(', ') + ' <a href="#" id="ps-edit">수정</a>';
+    el('participant-summary').classList.remove('hidden');
+    el('ps-edit').addEventListener('click', function(e){
+      e.preventDefault();
+      el('participant-summary').classList.add('hidden');
+      el('step2').classList.add('hidden');
+      el('goal-summary').classList.add('hidden');
+      el('step3').classList.add('hidden');
+      el('step1').classList.remove('hidden');
+    });
+    el('step2').classList.remove('hidden');
+  });
+
+  el('add-goal-btn').addEventListener('click', addGoal);
+  el('goal-input').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); addGoal(); }
+  });
+  el('done-goal-btn').addEventListener('click', validateAndProceedGoals);
+
+  el('start-btn').addEventListener('click', function(){
+    el('start-btn').disabled = true;
+    playStep(0);
+  });
+
+  el('reset-btn').addEventListener('click', function(){
+    location.reload();
+  });
+
+  updateParticipantUI();
+  updateGoalUI();
+})();
+</script>
+</body>
+</html>
